@@ -1,0 +1,97 @@
+name: Add AUMJ88 JGeckoU export
+
+on:
+  push:
+    paths:
+      - ".github/workflows/add-aumj88-export.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate AUMJ88.xml
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.sax.saxutils import escape
+
+          source = Path("exports/Nintendo/wiiu.json")
+          data = json.loads(source.read_text(encoding="utf-8"))
+          game = next(game for game in data if game.get("id") == "MINECRAFT-WIIU")
+          cheats = [
+              cheat for cheat in game["cheat"]
+              if cheat.get("region_id") in (None, "AUMJ88")
+          ]
+
+          # These entries were enabled in the original JGeckoU XML source.
+          enabled_indices = {1042, 1043, 1044, 1046, 3755}
+
+          lines = ['<?xml version="1.0" encoding="UTF-16"?><codes>']
+          for index, cheat in enumerate(cheats):
+              name = escape(str(cheat["name"]), {'"': '&quot;'})
+              lines.append(f'    <entry name="{name}">')
+
+              code = cheat["code"]
+              if isinstance(code, list):
+                  code = "\n".join(code)
+              else:
+                  code = str(code)
+              lines.append(f'        <code>{escape(code)}</code>')
+              lines.append('        <codeInputType>Cheat Code</codeInputType>')
+              lines.append('        <authors/>')
+              lines.append('        <raw_assembly>false</raw_assembly>')
+              lines.append('        <assembly_ram_write>false</assembly_ram_write>')
+
+              comment_parts = []
+              if cheat.get("notes"):
+                  comment_parts.append(str(cheat["notes"]))
+              if cheat.get("aliases"):
+                  comment_parts.append("Aliases: " + ", ".join(map(str, cheat["aliases"])))
+              if cheat.get("authors"):
+                  comment_parts.append("Authors: " + ", ".join(map(str, cheat["authors"])))
+              if cheat.get("region_id"):
+                  comment_parts.append("Region ID: " + str(cheat["region_id"]))
+              if cheat.get("version"):
+                  comment_parts.append("Version: " + str(cheat["version"]))
+              if cheat.get("type"):
+                  comment_parts.append("Type: " + str(cheat["type"]))
+
+              comment = "\n\n".join(comment_parts)
+              if comment:
+                  lines.append(f'        <comment>{escape(comment)}</comment>')
+              else:
+                  lines.append('        <comment/>')
+
+              enabled = "true" if index in enabled_indices else "false"
+              lines.append(f'        <enabled>{enabled}</enabled>')
+              lines.append('    </entry>')
+
+          lines.append('</codes>')
+          output = "\n".join(lines) + "\n"
+
+          destination = Path("exports/JGeckoU/AUMJ88.xml")
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_text(output, encoding="utf-8", newline="")
+          PY
+
+          echo "6a3675c91ad096287aba41de7558846699ceba879c45442a6209d6d6357da3bf  exports/JGeckoU/AUMJ88.xml" | sha256sum -c -
+
+      - name: Commit export and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/add-aumj88-export.yml
+          git add exports/JGeckoU/AUMJ88.xml
+          git commit -m "data: add JGeckoU AUMJ88 export"
+          git push origin HEAD:main
