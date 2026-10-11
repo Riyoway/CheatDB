@@ -7,11 +7,12 @@ The primary dataset is stored in SQLite. JSON and JSONL exports are included for
 ## Contents
 
 - `cheatdb.db` — canonical SQLite database
-- `exports/Nintendo/switch.json` — Nintendo Switch cheats
-- `exports/Nintendo/3ds.json` — Nintendo 3DS cheats
-- `exports/Nintendo/nes.json` — Nintendo Entertainment System cheats
-- `exports/Nintendo/wiiu.json` — Wii U cheats
-- `exports/all.jsonl` — one cheat record per line across all platforms
+- `exports/JSON/Nintendo/switch.json` — Nintendo Switch cheats
+- `exports/JSON/Nintendo/3ds.json` — Nintendo 3DS cheats
+- `exports/JSON/Nintendo/nes.json` — Nintendo Entertainment System cheats
+- `exports/JSON/Nintendo/wiiu.json` — Wii U cheats
+- `exports/JSON/Nintendo/all.jsonl` — one cheat record per line across all Nintendo platforms
+- `exports/JGeckoU/AUMJ88.xml` — JGecko U XML export for Minecraft: Wii U Edition (AUMJ88)
 
 ## Dataset size
 
