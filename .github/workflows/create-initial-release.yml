@@ -1,0 +1,61 @@
+name: Create initial release
+
+on:
+  push:
+    paths:
+      - '.github/workflows/create-initial-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cat > /tmp/release-notes.md <<'EOF'
+          Initial public release of CheatDB.
+
+          Includes the canonical SQLite database, Nintendo JSON/JSONL exports, and the JGecko U AUMJ88 XML export.
+
+          Dataset size:
+          - Nintendo Switch: 2,491 games / variants, 56,476 cheats
+          - Nintendo 3DS: 644 games / variants, 12,265 cheats
+          - Nintendo Entertainment System: 2,180 games / variants, 42,172 cheats
+          - Wii U: 12 games / variants, 6,948 cheats
+          - Total: 5,327 games / variants, 117,861 cheats
+          EOF
+
+          gh release create v1.0.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 0c1787e6f69714630ca8d1d87ae425675ccc7fab \
+            --title "CheatDB v1.0.0" \
+            --notes-file /tmp/release-notes.md \
+            cheatdb.db \
+            exports/JSON/Nintendo/3ds.json \
+            exports/JSON/Nintendo/nes.json \
+            exports/JSON/Nintendo/switch.json \
+            exports/JSON/Nintendo/wiiu.json \
+            exports/JSON/Nintendo/all.jsonl \
+            exports/JGeckoU/AUMJ88.xml
+
+      - name: Remove temporary workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          rm -f .github/workflows/create-initial-release.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove temporary release workflow"
+          git push
