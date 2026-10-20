@@ -4,9 +4,25 @@ CheatDB is a normalized collection of game cheat codes for Nintendo platforms.
 
 The primary dataset is stored in SQLite. JSON and JSONL exports are included for applications that prefer text-based formats.
 
+## Repository layout
+
+```text
+CheatDB/
+├─ apps/
+│  └─ web/        # Web frontend for db.riyo.me/cheatdb
+├─ packages/      # Shared code used by apps and tooling
+├─ data/
+│  └─ cheatdb.db  # Canonical SQLite database
+├─ exports/       # Generated distribution formats
+├─ scripts/       # Import, build, export, validation, and web-data tooling
+└─ README.md
+```
+
+`data/cheatdb.db` is the canonical source of truth. Files under `exports/` are distribution formats derived from the dataset. The web frontend lives in `apps/web/`; shared packages should only be added when code is genuinely shared between multiple consumers.
+
 ## Contents
 
-- `cheatdb.db` — canonical SQLite database
+- `data/cheatdb.db` — canonical SQLite database
 - `exports/JSON/Nintendo/switch.json` — Nintendo Switch cheats
 - `exports/JSON/Nintendo/3ds.json` — Nintendo 3DS cheats
 - `exports/JSON/Nintendo/nes.json` — Nintendo Entertainment System cheats
@@ -57,7 +73,7 @@ Game records may also contain platform-specific identifiers such as `aliases`, `
 
 ## SQLite structure
 
-The main tables in `cheatdb.db` are:
+The main tables in `data/cheatdb.db` are:
 
 - `platforms`
 - `games`
