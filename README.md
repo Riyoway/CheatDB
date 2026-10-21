@@ -124,7 +124,7 @@ For the **CheatDB Pages project**, set:
 | Environment variable | `NODE_VERSION=22.22.3` |
 | Custom domain | **None**; keep the project's own `*.pages.dev` URL |
 
-Only the **Database Portal** Pages project owns the `db.riyo.me` custom domain. The Worker is maintained and deployed from **`Riyoway/Database`**, with routes for both `db.riyo.me/cheatdb` and `db.riyo.me/cheatdb/*`. Its origin must be the actual CheatDB project's Pages URL (`https://cheatdb.pages.dev` is the initial configured value).
+Only the **Database Portal** Pages project owns the `db.riyo.me` custom domain. The Worker is maintained and deployed from **`Riyoway/Database`**, using the `db.riyo.me/cheatdb*` route so that bare-prefix queries are included. The Worker checks the exact path boundary before proxying. Its origin is `https://cheatdb.pages.dev`.
 
 The Worker redirects the bare `/cheatdb` to `/cheatdb/`, strips exactly one `/cheatdb` prefix for proxy requests, preserves queries, and rewrites origin redirects onto the public path. For example:
 
