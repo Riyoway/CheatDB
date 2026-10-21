@@ -5,3 +5,4 @@ exports/web/
 .DS_Store
 .playwright-mcp/
 .wrangler/
+.cloudflare/

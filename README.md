@@ -138,6 +138,8 @@ Public request                            Internal Pages request
 
 Vite uses `base: "/cheatdb/"`; navigation and data requests use that same base. The build intentionally contains flat `assets/` and `data/` directories because the proxy removes the prefix. Pages' `_redirects` serves the SPA on direct platform URLs. The raw Pages origin is internal; use the routed public URL or the local public-path server to review the browser.
 
-See [apps/web/README.md](apps/web/README.md) for local proxy testing, data loading, and design asset details. This implementation does not deploy anything or invoke Cloudflare CLI.
+Production uses the Git-integrated `cheatdb` Pages project and the `database-path-router` Worker maintained in the private `Riyoway/Database` repository. The portal is deployed by the `riyo-database` Pages project. Main-branch pushes update each Pages project automatically; Worker changes are deployed separately from `Database/worker/wrangler.jsonc`.
+
+See [apps/web/README.md](apps/web/README.md) for local proxy testing, data loading, and design details. Local development commands do not access Cloudflare.
 
 Cheat compatibility may depend on the exact game version, build, region, emulator, or hardware environment.
