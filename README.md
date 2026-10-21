@@ -92,4 +92,52 @@ WHERE platform = 'wiiu'
   AND game_name LIKE '%Minecraft%';
 ```
 
+## Web browser
+
+The dedicated browser lives in `apps/web/` and is published at **https://db.riyo.me/cheatdb/**. It supports game/title-ID/alias search, platform filtering, build and region filters, cheat-name search, author credits, and code copying. Selected games and searches can be linked using `?game=1&q=Mario`.
+
+```sh
+cd apps/web
+npm ci
+npm run dev
+```
+
+Open http://127.0.0.1:5173/cheatdb/. Node.js **22.13+** is required; `.node-version` pins the tested Node 22 release. No database server is needed.
+
+`npm run build` opens **only** `data/cheatdb.db`, in read-only mode, validates it, generates `exports/web/`, type-checks the app, builds `apps/web/dist/`, and checks Cloudflare Pages file limits. Generated web exports are copied into the build, never into the app's source tree. The SQLite file and the existing JSON, JSONL and XML exports are not copied or modified. `npm test` runs the generator's checks.
+
+### Two repositories, two Pages projects
+
+| Repository | Responsibility | Public URL |
+| --- | --- | --- |
+| `Riyoway/Database` | Database portal, common portal UI, path-routing Worker | `https://db.riyo.me/` |
+| `Riyoway/CheatDB` | Canonical dataset, exports and dedicated browser | `https://db.riyo.me/cheatdb/` |
+
+For the **CheatDB Pages project**, set:
+
+| Setting | Value |
+| --- | --- |
+| Repository | `Riyoway/CheatDB` |
+| Root directory | `apps/web` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Environment variable | `NODE_VERSION=22.22.3` |
+| Custom domain | **None**; keep the project's own `*.pages.dev` URL |
+
+Only the **Database Portal** Pages project owns the `db.riyo.me` custom domain. The Worker is maintained and deployed from **`Riyoway/Database`**, with routes for both `db.riyo.me/cheatdb` and `db.riyo.me/cheatdb/*`. Its origin must be the actual CheatDB project's Pages URL (`https://cheatdb.pages.dev` is the initial configured value).
+
+The Worker redirects the bare `/cheatdb` to `/cheatdb/`, strips exactly one `/cheatdb` prefix for proxy requests, preserves queries, and rewrites origin redirects onto the public path. For example:
+
+```text
+Public request                            Internal Pages request
+/cheatdb/                              → /
+/cheatdb/switch/?game=1                 → /switch/?game=1
+/cheatdb/assets/app.js                  → /assets/app.js
+/cheatdb/data/catalog.json              → /data/catalog.json
+```
+
+Vite uses `base: "/cheatdb/"`; navigation and data requests use that same base. The build intentionally contains flat `assets/` and `data/` directories because the proxy removes the prefix. Pages' `_redirects` serves the SPA on direct platform URLs. The raw Pages origin is internal; use the routed public URL or the local public-path server to review the browser.
+
+See [apps/web/README.md](apps/web/README.md) for local proxy testing, data loading, and design asset details. This implementation does not deploy anything or invoke Cloudflare CLI.
+
 Cheat compatibility may depend on the exact game version, build, region, emulator, or hardware environment.

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "cheatdb",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-10-21"
+}

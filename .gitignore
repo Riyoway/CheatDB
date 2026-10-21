@@ -1,0 +1,7 @@
+node_modules/
+apps/web/dist/
+exports/web/
+*.tsbuildinfo
+.DS_Store
+.playwright-mcp/
+.wrangler/

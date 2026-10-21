@@ -1,0 +1,25 @@
+{
+  "name": "cheatdb-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "data": "node ../../scripts/build-web-data.mjs",
+    "predev": "npm run data",
+    "dev": "vite --host 127.0.0.1",
+    "build": "npm run data && tsc --noEmit && vite build && node ../../scripts/check-web-build.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "serve:origin": "node ../../scripts/serve-web.mjs --origin",
+    "serve:public": "node ../../scripts/serve-web.mjs",
+    "test": "node --test ../../scripts/web-data.test.mjs"
+  },
+  "dependencies": {
+    "@fontsource/commit-mono": "5.3.0",
+    "@fontsource/inter": "5.3.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "8.3.4"
+  }
+}
