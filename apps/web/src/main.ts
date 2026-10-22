@@ -3,6 +3,7 @@ import '@fontsource/inter/latin-500.css';
 import '@fontsource/inter/latin-600.css';
 import '@fontsource/commit-mono/latin-400.css';
 import './style.css';
+import { observeSelections, reveal, syncSelection, toggleDisclosure, updateDisclosure } from './motion';
 
 type Platform = { id: string; name: string; games: number; cheats: number };
 type Game = { id: number; name: string; platform: string; externalId: string; cheats: number; aliases: string[]; identifiers: { identifier: string; region: string }[] };
@@ -25,6 +26,7 @@ const icon = (name: string, size = 18) => {
     game: '<path d="M7 7h10c3 0 6 11 3 12-2 1-4-3-5-3H9c-1 0-3 4-5 3C1 18 4 7 7 7Z"/><path d="M7 10v5m-2-2.5h4m7-1h.01m2 3h.01"/>',
     code: '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-12-2 14"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
+    check: '<path d="m5 12 4 4L19 6"/>',
     github: '<path d="M9 19c-4 1-4-2-6-2m12 4v-3c0-1-.2-2-1-2 4-.5 6-2 6-6 0-1-.5-2-1-3 .2-1 .2-2-.2-3-2 0-3 1-3 1-2-.6-4-.6-6 0 0 0-1-1-3-1-.4 1-.4 2-.2 3-.5 1-1 2-1 3 0 4 2 5.5 6 6-.8.5-1 1-1 2v3"/>',
   };
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] ?? paths.game}</svg>`;
@@ -101,12 +103,25 @@ function shell() {
       event.preventDefault(); $('#game-search').focus();
     }
   });
+  observeSelections([$('#platform-tabs'), $('#platform-nav')]);
+  reveal($('.sidebar'), 0, 200);
+  ['.page-header', '.platform-tabs', '.library', '.dataset-panel'].forEach((selector, i) => reveal($(selector), 4, 200, i * 30));
 }
 
 function renderPlatforms() {
   const nav = [{ id: '', name: 'All platforms', games: catalog.totalGames }, ...catalog.platforms];
-  $('#platform-nav').innerHTML = nav.map(p => `<a href="${publicPath(p.id)}" data-platform="${p.id}" class="nav-item ${p.id === platform ? 'active' : ''}" ${p.id === platform ? 'aria-current="page"' : ''}>${icon(p.id ? 'game' : 'grid', 16)}<span>${escape(p.id === 'nes' ? 'NES' : p.name)}</span><small>${fmt(p.games)}</small></a>`).join('');
-  $('#platform-tabs').innerHTML = nav.map(p => `<a href="${publicPath(p.id)}" data-platform="${p.id}" ${p.id === platform ? 'aria-current="page" class="active"' : ''}>${escape(p.id === 'nes' ? 'NES' : p.id ? p.name.replace('Nintendo ', '') : 'All platforms')}</a>`).join('');
+  if (!$('#platform-nav').children.length) {
+    $('#platform-nav').innerHTML = nav.map(p => `<a href="${publicPath(p.id)}" data-platform="${p.id}" class="nav-item">${icon(p.id ? 'game' : 'grid', 16)}<span>${escape(p.id === 'nes' ? 'NES' : p.name)}</span><small>${fmt(p.games)}</small></a>`).join('');
+    $('#platform-tabs').innerHTML = nav.map(p => `<a href="${publicPath(p.id)}" data-platform="${p.id}">${escape(p.id === 'nes' ? 'NES' : p.id ? p.name.replace('Nintendo ', '') : 'All platforms')}</a>`).join('');
+  }
+  for (const container of [$('#platform-nav'), $('#platform-tabs')]) {
+    container.querySelectorAll<HTMLElement>(':scope > a').forEach(link => {
+      const active = link.dataset.platform === platform;
+      link.classList.toggle('active', active);
+      if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+    });
+    syncSelection(container);
+  }
   const title = platform ? catalog.platforms.find(p => p.id === platform)!.name : 'Nintendo cheat code database';
   document.title = `CheatDB · ${title}`;
   document.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href = `https://db.riyo.me${publicPath()}`;
@@ -126,18 +141,23 @@ function renderGames() {
     <a href="${publicPath(game.platform)}?game=${game.id}" data-game="${game.id}" class="game-row ${selected === game.id ? 'selected' : ''}" ${selected === game.id ? 'aria-current="true"' : ''}>
       <span class="game-icon">${icon('game', 18)}</span><span class="game-title"><strong>${escape(game.name)}</strong><small>${escape(game.platform.toUpperCase())}<span>·</span>${escape(game.externalId)}</small></span><span class="game-count">${fmt(game.cheats)}</span></a>`).join('') : '<div class="empty-list"><strong>No games found</strong><p>Try a shorter title or another platform.</p></div>';
   $('#game-pagination').innerHTML = `<button data-games-page="-1" aria-label="Previous games" ${gamePage === 0 ? 'disabled' : ''}>←</button><span>${gamePage + 1} / ${pages}</span><button data-games-page="1" aria-label="Next games" ${gamePage + 1 >= pages ? 'disabled' : ''}>→</button>`;
+  reveal($('#game-list'));
+  reveal($('#result-count'), 0, 120);
 }
 
 async function renderGame() {
   const request = ++gameRequest;
   detail = null; codeCache.clear();
   cheatQuery = ''; buildFilter = ''; regionFilter = ''; cheatPage = 0;
+  $('#game-detail').removeAttribute('aria-busy');
   if (!selected) {
     $('#game-detail').innerHTML = `<div class="welcome">${icon('code', 28)}<h2>Select a game</h2><p>Choose a title to view its cheat codes,<br>builds, regions and author credits.</p><span class="welcome-shortcut"><kbd>/</kbd> to search games</span></div>`;
+    reveal($('#game-detail'), 4, 200);
     return;
   }
   const gameId = selected;
-  $('#game-detail').innerHTML = '<div class="panel-message" role="status">Loading game…</div>';
+  $('#game-detail').setAttribute('aria-busy', 'true');
+  $('#game-detail').innerHTML = `<div class="game-loading" role="status"><span class="sr-only">Loading game…</span><div class="skeleton skeleton-title" aria-hidden="true"></div><div class="skeleton skeleton-meta" aria-hidden="true"></div>${Array.from({ length: 6 }, () => '<div class="skeleton skeleton-row" aria-hidden="true"></div>').join('')}</div>`;
   try {
     const game = await json<GameDetail>(`${catalog.revision}/games/${gameId}.json`);
     if (request !== gameRequest) return;
@@ -151,26 +171,34 @@ async function renderGame() {
     $('#cheat-search').addEventListener('input', event => { cheatQuery = (event.target as HTMLInputElement).value; cheatPage = 0; renderCheats(); });
     document.querySelector('#build-filter')?.addEventListener('change', event => { buildFilter = (event.target as HTMLSelectElement).value; cheatPage = 0; renderCheats(); });
     document.querySelector('#region-filter')?.addEventListener('change', event => { regionFilter = (event.target as HTMLSelectElement).value; cheatPage = 0; renderCheats(); });
-    renderCheats();
+    $('#game-detail').removeAttribute('aria-busy');
+    renderCheats(false);
+    reveal($('#game-detail'), 4, 200);
   } catch (error) {
-    if (request === gameRequest) $('#game-detail').innerHTML = `<div class="panel-message" role="alert">${escape((error as Error).message)}<button class="outline-button" data-retry-game>Try again</button></div>`;
+    if (request === gameRequest) {
+      $('#game-detail').removeAttribute('aria-busy');
+      $('#game-detail').innerHTML = `<div class="panel-message" role="alert">${escape((error as Error).message)}<button class="outline-button" data-retry-game>Try again</button></div>`;
+      reveal($('#game-detail'));
+    }
   }
 }
 
-function renderCheats() {
+function renderCheats(animate = true) {
   if (!detail) return;
   const terms = cheatQuery.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   const entries = detail.entries.filter(c => (!buildFilter || c.build_id === buildFilter) && (!regionFilter || c.region_id === regionFilter) && terms.every(t => [c.name, ...c.aliases].join(' ').toLocaleLowerCase().includes(t)));
   const pages = Math.max(1, Math.ceil(entries.length / pageSize));
   cheatPage = Math.min(cheatPage, pages - 1);
   $('#cheat-count').textContent = `${fmt(entries.length)} available`;
-  $('#cheat-list').innerHTML = entries.slice(cheatPage * pageSize, (cheatPage + 1) * pageSize).map((c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(cheatPage * pageSize + i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="cheat-body"><p role="status">Loading code…</p></div></details>`).join('') || '<div class="empty-list">No codes match these filters.</div>';
+  $('#cheat-list').innerHTML = entries.slice(cheatPage * pageSize, (cheatPage + 1) * pageSize).map((c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(cheatPage * pageSize + i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="cheat-body" aria-busy="true"><p class="loading-label" role="status"><span class="loading-indicator" aria-hidden="true"></span>Loading code…</p></div></details>`).join('') || '<div class="empty-list">No codes match these filters.</div>';
   $('#cheat-pagination').innerHTML = `<button data-cheats-page="-1" aria-label="Previous codes" ${cheatPage === 0 ? 'disabled' : ''}>←</button><span>${cheatPage + 1} / ${pages}</span><button data-cheats-page="1" aria-label="Next codes" ${cheatPage + 1 >= pages ? 'disabled' : ''}>→</button>`;
   $('#cheat-list').scrollTop = 0;
+  if (animate) { reveal($('#cheat-list')); reveal($('#cheat-count'), 0, 120); }
 }
 
 async function loadCode(element: HTMLDetailsElement) {
-  if (element.dataset.loaded || !detail) return;
+  if (element.dataset.loaded || element.dataset.loading || !detail) return;
+  element.dataset.loading = 'true';
   const gameId = detail.id, part = element.dataset.part!, key = `${gameId}-${part}`;
   const body = element.querySelector<HTMLElement>('.cheat-body')!;
   try {
@@ -180,13 +208,25 @@ async function loadCode(element: HTMLDetailsElement) {
     const code = codes.find(c => String(c.id) === element.dataset.cheat);
     if (!code) throw new Error('Code missing from this dataset. Please reload.');
     element.dataset.loaded = 'true';
-    body.innerHTML = `<div class="code-meta">${code.build_id ? `<span>Build <code>${escape(code.build_id)}</code></span>` : '<span>Code</span>'}<button class="copy-button" data-copy>${icon('copy', 14)} Copy</button></div><pre tabindex="0" aria-label="Cheat code"><code>${escape(code.code_text)}</code></pre>${code.notes ? `<p class="code-notes">${escape(code.notes)}</p>` : ''}${code.authors.length ? `<p class="code-authors">By ${code.authors.map(escape).join(', ')}</p>` : ''}${code.aliases.length ? `<p class="code-authors">Also known as: ${code.aliases.map(escape).join(', ')}</p>` : ''}`;
+    updateDisclosure(element, () => {
+      body.removeAttribute('aria-busy');
+      body.innerHTML = `<div class="code-meta">${code.build_id ? `<span>Build <code>${escape(code.build_id)}</code></span>` : '<span>Code</span>'}<button class="copy-button" data-copy>${icon('copy', 14)}<span class="copy-label">Copy</span></button></div><pre tabindex="0" aria-label="Cheat code"><code>${escape(code.code_text)}</code></pre>${code.notes ? `<p class="code-notes">${escape(code.notes)}</p>` : ''}${code.authors.length ? `<p class="code-authors">By ${code.authors.map(escape).join(', ')}</p>` : ''}${code.aliases.length ? `<p class="code-authors">Also known as: ${code.aliases.map(escape).join(', ')}</p>` : ''}`;
+    });
+    let resetCopy: ReturnType<typeof setTimeout>;
     body.querySelector<HTMLButtonElement>('[data-copy]')!.addEventListener('click', async event => {
       const button = event.currentTarget as HTMLButtonElement;
       try {
         await navigator.clipboard.writeText(code.code_text);
-        button.textContent = 'Copied';
-        setTimeout(() => { if (button.isConnected) button.innerHTML = `${icon('copy', 14)} Copy`; }, 1800);
+        clearTimeout(resetCopy);
+        button.dataset.copied = '';
+        button.innerHTML = `${icon('check', 14)}<span class="copy-label" role="status">Copied</span>`;
+        reveal(button.querySelector<HTMLElement>('.copy-label')!, 2, 150);
+        resetCopy = setTimeout(() => {
+          if (!button.isConnected) return;
+          delete button.dataset.copied;
+          button.innerHTML = `${icon('copy', 14)}<span class="copy-label">Copy</span>`;
+          reveal(button.querySelector<HTMLElement>('.copy-label')!);
+        }, 1800);
       } catch {
         button.textContent = 'Select code to copy';
         const range = document.createRange(); range.selectNodeContents(body.querySelector('pre')!);
@@ -195,11 +235,21 @@ async function loadCode(element: HTMLDetailsElement) {
     });
   } catch (error) {
     codeCache.delete(key);
-    if (element.isConnected) body.innerHTML = `<p role="alert">${escape((error as Error).message)}</p><button class="outline-button" data-retry-code>Try again</button>`;
+    if (element.isConnected) updateDisclosure(element, () => {
+      body.removeAttribute('aria-busy');
+      body.innerHTML = `<p role="alert">${escape((error as Error).message)}</p><button class="outline-button" data-retry-code>Try again</button>`;
+    });
+  } finally {
+    delete element.dataset.loading;
   }
 }
 
 function handleClick(event: MouseEvent) {
+  const summary = (event.target as Element).closest('summary');
+  if (summary?.parentElement instanceof HTMLDetailsElement) {
+    toggleDisclosure(summary.parentElement, event);
+    return;
+  }
   const target = (event.target as Element).closest<HTMLElement>('[data-platform], [data-game], [data-games-page], [data-cheats-page], [data-retry-game], [data-retry-code]');
   if (!target || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
   if (target.hasAttribute('data-platform')) {
@@ -208,8 +258,14 @@ function handleClick(event: MouseEvent) {
     updateUrl(); renderPlatforms(); renderGames(); void renderGame();
   } else if (target.dataset.game) {
     event.preventDefault(); selected = Number(target.dataset.game);
-    updateUrl(); renderGames(); void renderGame();
-    if (matchMedia('(max-width: 700px)').matches) $('#game-detail').scrollIntoView({ block: 'start' });
+    updateUrl();
+    document.querySelectorAll<HTMLElement>('[data-game]').forEach(row => {
+      const active = Number(row.dataset.game) === selected;
+      row.classList.toggle('selected', active);
+      if (active) row.setAttribute('aria-current', 'true'); else row.removeAttribute('aria-current');
+    });
+    void renderGame();
+    if (matchMedia('(max-width: 700px)').matches) $('#game-detail').scrollIntoView({ block: 'start', behavior: event.detail && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'instant' });
   } else if (target.dataset.gamesPage) {
     gamePage += Number(target.dataset.gamesPage); renderGames(); $('#game-list').scrollTop = 0;
   } else if (target.dataset.cheatsPage) {
@@ -222,6 +278,7 @@ function showRoute() {
   if (!readUrl()) {
     ++gameRequest;
     detail = null;
+    $('#game-detail').removeAttribute('aria-busy');
     $('#game-detail').innerHTML = `<div class="panel-message"><h2>Platform not found</h2><a href="${base}">Browse all platforms</a></div>`;
     $('#game-list').replaceChildren();
     return;
@@ -240,6 +297,7 @@ async function boot() {
   } catch (error) {
     app.innerHTML = `<main class="boot-error"><h1>CheatDB</h1><p role="alert">${escape((error as Error).message)}</p><button class="outline-button" id="reload">Reload dataset</button><a href="https://github.com/Riyoway/CheatDB">Browse on GitHub ${icon('external', 15)}</a></main>`;
     $('#reload').addEventListener('click', () => location.reload());
+    reveal($('.boot-error'), 4, 200);
   }
 }
 
