@@ -4,6 +4,7 @@ import '@fontsource/inter/latin-600.css';
 import '@fontsource/commit-mono/latin-400.css';
 import './style.css';
 import { observeSelections, reveal, syncSelection, toggleDisclosure, updateDisclosure } from './motion';
+import { infiniteList } from './infinite-list';
 
 type Platform = { id: string; name: string; games: number; cheats: number };
 type Game = { id: number; name: string; platform: string; externalId: string; cheats: number; aliases: string[]; identifiers: { identifier: string; region: string }[] };
@@ -41,11 +42,11 @@ async function json<T>(path: string): Promise<T> {
 }
 
 let catalog: Catalog;
-let platform = '', query = '', selected = 0, gamePage = 0, cheatPage = 0;
+let platform = '', query = '', selected = 0;
 let detail: GameDetail | null = null;
 let gameRequest = 0;
 let cheatQuery = '', buildFilter = '', regionFilter = '';
-const pageSize = 40;
+let stopGames: (() => void) | undefined, stopCheats: (() => void) | undefined;
 const codeCache = new Map<string, Promise<Code[]>>();
 
 function publicPath(id = platform) { return `${base}${id ? `${id}/` : ''}`; }
@@ -84,13 +85,12 @@ function shell() {
         <section id="library" class="library panel" aria-labelledby="library-heading">
           <div class="library-controls"><div class="panel-heading"><h2 id="library-heading">Games and cheat codes</h2><span id="result-count" class="muted" role="status"></span></div>
           <div class="toolbar"><label class="searchbox">${icon('search', 16)}<input id="game-search" type="search" placeholder="Search games, title IDs or aliases…" aria-label="Search games, title IDs or aliases" autocomplete="off"/><kbd>/</kbd></label><a class="outline-button" aria-label="View dataset exports" href="https://github.com/Riyoway/CheatDB/tree/main/exports">${icon('external', 14)}<span>View exports</span></a></div></div>
-          <div class="browser"><section class="game-pane" aria-label="Games"><div class="pane-label">Game<span>Codes</span></div><div id="game-list"></div><div id="game-pagination" class="pagination"></div></section><section id="game-detail" class="detail-pane" aria-label="Selected game"></section></div>
+          <div class="browser"><section class="game-pane" aria-label="Games"><div class="pane-label">Game<span>Codes</span></div><div id="game-list" tabindex="0" role="region" aria-label="Game list"></div></section><section id="game-detail" class="detail-pane" aria-label="Selected game"></section></div>
         </section>
         <section class="panel dataset-panel" aria-labelledby="dataset-heading"><div class="panel-heading"><h2 id="dataset-heading">About this dataset</h2><span class="snapshot"><span class="status-dot"></span>Available</span></div><p class="panel-description">Nintendo cheat codes with build identifiers, regions and author credits. Compatibility depends on the exact game version and environment.</p><div class="panel-footer"><span>${catalog.generatedAt ? `Updated ${escape(catalog.generatedAt.slice(0, 10))}` : 'SQLite snapshot'}<span class="footer-separator">·</span>SQLite, JSON and JSONL</span><a href="https://github.com/Riyoway/CheatDB#readme">Dataset documentation ${icon('external', 13)}</a></div></section>
     </main>`;
   $('#game-search').addEventListener('input', event => {
     query = (event.target as HTMLInputElement).value;
-    gamePage = 0;
     updateUrl(true); renderGames();
   });
   app.addEventListener('click', handleClick);
@@ -134,21 +134,20 @@ function renderGames() {
     const text = [game.name, game.externalId, ...game.aliases, ...game.identifiers.map(i => `${i.identifier} ${i.region}`)].join(' ').toLocaleLowerCase();
     return terms.every(term => text.includes(term));
   });
-  const pages = Math.max(1, Math.ceil(games.length / pageSize));
-  gamePage = Math.min(gamePage, pages - 1);
   $('#result-count').textContent = `${fmt(games.length)} ${games.length === 1 ? 'game' : 'games'}`;
-  $('#game-list').innerHTML = games.length ? games.slice(gamePage * pageSize, (gamePage + 1) * pageSize).map(game => `
+  stopGames?.();
+  stopGames = infiniteList($('#game-list'), games, game => `
     <a href="${publicPath(game.platform)}?game=${game.id}" data-game="${game.id}" class="game-row ${selected === game.id ? 'selected' : ''}" ${selected === game.id ? 'aria-current="true"' : ''}>
-      <span class="game-icon">${icon('game', 18)}</span><span class="game-title"><strong>${escape(game.name)}</strong><small>${escape(game.platform.toUpperCase())}<span>·</span>${escape(game.externalId)}</small></span><span class="game-count">${fmt(game.cheats)}</span></a>`).join('') : '<div class="empty-list"><strong>No games found</strong><p>Try a shorter title or another platform.</p></div>';
-  $('#game-pagination').innerHTML = `<button data-games-page="-1" aria-label="Previous games" ${gamePage === 0 ? 'disabled' : ''}>←</button><span>${gamePage + 1} / ${pages}</span><button data-games-page="1" aria-label="Next games" ${gamePage + 1 >= pages ? 'disabled' : ''}>→</button>`;
+      <span class="game-icon">${icon('game', 18)}</span><span class="game-title"><strong>${escape(game.name)}</strong><small>${escape(game.platform.toUpperCase())}<span>·</span>${escape(game.externalId)}</small></span><span class="game-count">${fmt(game.cheats)}</span></a>`, '<div class="empty-list"><strong>No games found</strong><p>Try a shorter title or another platform.</p></div>', 'games');
   reveal($('#game-list'));
   reveal($('#result-count'), 0, 120);
 }
 
 async function renderGame() {
   const request = ++gameRequest;
+  stopCheats?.(); stopCheats = undefined;
   detail = null; codeCache.clear();
-  cheatQuery = ''; buildFilter = ''; regionFilter = ''; cheatPage = 0;
+  cheatQuery = ''; buildFilter = ''; regionFilter = '';
   $('#game-detail').removeAttribute('aria-busy');
   if (!selected) {
     $('#game-detail').innerHTML = `<div class="welcome">${icon('code', 28)}<h2>Select a game</h2><p>Choose a title to view its cheat codes,<br>builds, regions and author credits.</p><span class="welcome-shortcut"><kbd>/</kbd> to search games</span></div>`;
@@ -167,10 +166,10 @@ async function renderGame() {
     const options = (values: string[]) => values.map(v => `<option value="${escape(v)}">${escape(v)}</option>`).join('');
     $('#game-detail').innerHTML = `<div class="detail-header"><div class="detail-title"><h2>${escape(game.name)}</h2><span class="platform-badge">${escape(catalog.platforms.find(p => p.id === game.platform)?.name)}</span></div><div class="game-id"><span>Title ID</span><code>${escape(game.externalId)}</code></div>${game.identifiers.length ? `<div class="identifiers">${game.identifiers.map(i => `<span>${escape(i.identifier)}${i.region ? ` · ${escape(i.region)}` : ''}</span>`).join('')}</div>` : ''}<p class="compatibility">Match the game version, build and region before using a code.</p></div>
       <div class="code-toolbar"><label class="searchbox compact">${icon('search', 16)}<input id="cheat-search" type="search" placeholder="Search cheat names…" aria-label="Search cheat names"/></label><div class="select-filters">${builds.length ? `<label>Build<select id="build-filter"><option value="">All builds</option>${options(builds)}</select></label>` : ''}${regions.length ? `<label>Region<select id="region-filter"><option value="">All regions</option>${options(regions)}</select></label>` : ''}</div></div>
-      <div class="codes-heading"><h3>Cheat codes</h3><span id="cheat-count" role="status"></span></div><div id="cheat-list"></div><div id="cheat-pagination" class="pagination"></div>`;
-    $('#cheat-search').addEventListener('input', event => { cheatQuery = (event.target as HTMLInputElement).value; cheatPage = 0; renderCheats(); });
-    document.querySelector('#build-filter')?.addEventListener('change', event => { buildFilter = (event.target as HTMLSelectElement).value; cheatPage = 0; renderCheats(); });
-    document.querySelector('#region-filter')?.addEventListener('change', event => { regionFilter = (event.target as HTMLSelectElement).value; cheatPage = 0; renderCheats(); });
+      <div class="codes-heading"><h3>Cheat codes</h3><span id="cheat-count" role="status"></span></div><div id="cheat-list" tabindex="0" role="region" aria-label="Cheat code list"></div>`;
+    $('#cheat-search').addEventListener('input', event => { cheatQuery = (event.target as HTMLInputElement).value; renderCheats(); });
+    document.querySelector('#build-filter')?.addEventListener('change', event => { buildFilter = (event.target as HTMLSelectElement).value; renderCheats(); });
+    document.querySelector('#region-filter')?.addEventListener('change', event => { regionFilter = (event.target as HTMLSelectElement).value; renderCheats(); });
     $('#game-detail').removeAttribute('aria-busy');
     renderCheats(false);
     reveal($('#game-detail'), 4, 200);
@@ -187,12 +186,9 @@ function renderCheats(animate = true) {
   if (!detail) return;
   const terms = cheatQuery.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   const entries = detail.entries.filter(c => (!buildFilter || c.build_id === buildFilter) && (!regionFilter || c.region_id === regionFilter) && terms.every(t => [c.name, ...c.aliases].join(' ').toLocaleLowerCase().includes(t)));
-  const pages = Math.max(1, Math.ceil(entries.length / pageSize));
-  cheatPage = Math.min(cheatPage, pages - 1);
   $('#cheat-count').textContent = `${fmt(entries.length)} available`;
-  $('#cheat-list').innerHTML = entries.slice(cheatPage * pageSize, (cheatPage + 1) * pageSize).map((c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(cheatPage * pageSize + i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="cheat-body" aria-busy="true"><p class="loading-label" role="status"><span class="loading-indicator" aria-hidden="true"></span>Loading code…</p></div></details>`).join('') || '<div class="empty-list">No codes match these filters.</div>';
-  $('#cheat-pagination').innerHTML = `<button data-cheats-page="-1" aria-label="Previous codes" ${cheatPage === 0 ? 'disabled' : ''}>←</button><span>${cheatPage + 1} / ${pages}</span><button data-cheats-page="1" aria-label="Next codes" ${cheatPage + 1 >= pages ? 'disabled' : ''}>→</button>`;
-  $('#cheat-list').scrollTop = 0;
+  stopCheats?.();
+  stopCheats = infiniteList($('#cheat-list'), entries, (c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="cheat-body" aria-busy="true"><p class="loading-label" role="status"><span class="loading-indicator" aria-hidden="true"></span>Loading code…</p></div></details>`, '<div class="empty-list">No codes match these filters.</div>', 'codes');
   if (animate) { reveal($('#cheat-list')); reveal($('#cheat-count'), 0, 120); }
 }
 
@@ -250,11 +246,11 @@ function handleClick(event: MouseEvent) {
     toggleDisclosure(summary.parentElement, event);
     return;
   }
-  const target = (event.target as Element).closest<HTMLElement>('[data-platform], [data-game], [data-games-page], [data-cheats-page], [data-retry-game], [data-retry-code]');
+  const target = (event.target as Element).closest<HTMLElement>('[data-platform], [data-game], [data-retry-game], [data-retry-code]');
   if (!target || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
   if (target.hasAttribute('data-platform')) {
     event.preventDefault();
-    platform = target.dataset.platform!; selected = 0; gamePage = 0;
+    platform = target.dataset.platform!; selected = 0;
     updateUrl(); renderPlatforms(); renderGames(); void renderGame();
   } else if (target.dataset.game) {
     event.preventDefault(); selected = Number(target.dataset.game);
@@ -266,10 +262,6 @@ function handleClick(event: MouseEvent) {
     });
     void renderGame();
     if (matchMedia('(max-width: 700px)').matches) $('#game-detail').scrollIntoView({ block: 'start', behavior: event.detail && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'instant' });
-  } else if (target.dataset.gamesPage) {
-    gamePage += Number(target.dataset.gamesPage); renderGames(); $('#game-list').scrollTop = 0;
-  } else if (target.dataset.cheatsPage) {
-    cheatPage += Number(target.dataset.cheatsPage); renderCheats();
   } else if (target.hasAttribute('data-retry-game')) void renderGame();
   else if (target.hasAttribute('data-retry-code')) void loadCode(target.closest('details')!);
 }
@@ -277,6 +269,7 @@ function handleClick(event: MouseEvent) {
 function showRoute() {
   if (!readUrl()) {
     ++gameRequest;
+    stopGames?.(); stopCheats?.();
     detail = null;
     $('#game-detail').removeAttribute('aria-busy');
     $('#game-detail').innerHTML = `<div class="panel-message"><h2>Platform not found</h2><a href="${base}">Browse all platforms</a></div>`;
@@ -285,7 +278,7 @@ function showRoute() {
   }
   $('#game-search').setAttribute('value', query);
   ($<HTMLInputElement>('#game-search')).value = query;
-  gamePage = 0; renderPlatforms(); renderGames(); void renderGame();
+  renderPlatforms(); renderGames(); void renderGame();
 }
 
 async function boot() {
