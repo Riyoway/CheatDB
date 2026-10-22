@@ -76,7 +76,12 @@ function animateDisclosure(element: HTMLDetailsElement, expanded: boolean, from:
 }
 
 export function toggleDisclosure(element: HTMLDetailsElement, event: MouseEvent) {
-  if (!event.detail || reducedMotion.matches || keyboardInput) return;
+  if (!event.detail || reducedMotion.matches || keyboardInput) {
+    const pending = disclosures.get(element);
+    // Settle the pointer transition before the native keyboard toggle reverses it.
+    if (pending) finishDisclosure(element, pending.expanded);
+    return;
+  }
   event.preventDefault();
   const from = element.getBoundingClientRect().height;
   const expanded = !(disclosures.get(element)?.expanded ?? element.open);
