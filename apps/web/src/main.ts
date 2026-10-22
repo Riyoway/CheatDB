@@ -6,6 +6,7 @@ import './style.css';
 import { observeSelections, reveal, syncSelection, toggleDisclosure, updateDisclosure } from './motion';
 import { infiniteList } from './infinite-list';
 import { resourceContent } from './resources';
+import { icon } from './icons';
 
 type Platform = { id: string; name: string; games: number; cheats: number };
 type Game = { id: number; name: string; platform: string; externalId: string; cheats: number; aliases: string[]; identifiers: { identifier: string; region: string }[] };
@@ -18,21 +19,6 @@ const base = import.meta.env.BASE_URL;
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const fmt = (n: number) => n.toLocaleString('en-US');
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-const icon = (name: string, size = 18) => {
-  const paths: Record<string, string> = {
-    database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/>',
-    search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
-    arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
-    external: '<path d="M14 4h6v6m0-6L10 14M10 4H4v16h16v-6"/>',
-    grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-    game: '<path d="M7 7h10c3 0 6 11 3 12-2 1-4-3-5-3H9c-1 0-3 4-5 3C1 18 4 7 7 7Z"/><path d="M7 10v5m-2-2.5h4m7-1h.01m2 3h.01"/>',
-    code: '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-12-2 14"/>',
-    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
-    check: '<path d="m5 12 4 4L19 6"/>',
-    book: '<path d="M12 5v15m0-15C8 2 4 3 3 4v15c3-2 6-1 9 1m0-15c4-3 8-2 9-1v15c-3-2-6-1-9 1"/>',
-  };
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] ?? paths.game}</svg>`;
-};
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
 async function json<T>(path: string): Promise<T> {
@@ -77,7 +63,7 @@ function readUrl() {
 function shell() {
   app.innerHTML = `
     <aside class="sidebar">
-      <a class="workspace-link" href="https://db.riyo.me/" aria-label="Riyo databases portal"><span class="workspace-avatar">R</span><span>Riyo databases</span><span class="workspace-arrow" aria-hidden="true">↗</span></a>
+      <a class="workspace-link" href="https://db.riyo.me/" aria-label="Riyo databases portal"><span class="workspace-avatar">R</span><span>Riyo databases</span><span class="workspace-arrow">${icon('external', 14)}</span></a>
       <nav class="sidebar-home" aria-label="Database navigation"><a href="${base}" data-platform="" class="nav-item database-link">${icon('database', 17)}<span>CheatDB</span></a></nav>
       <div class="sidebar-section"><p class="nav-label">Platforms</p><nav aria-label="Platforms" id="platform-nav"></nav></div>
       <nav class="sidebar-section resources" aria-label="Resources"><a href="${base}downloads/" data-resource="downloads">${icon('code', 17)}<span>Downloads</span></a><a href="${base}docs/" data-resource="docs">${icon('book', 16)}<span>Guide & documentation</span></a></nav>
@@ -193,7 +179,7 @@ function renderCheats(animate = true) {
   const entries = detail.entries.filter(c => (!buildFilter || c.build_id === buildFilter) && (!regionFilter || c.region_id === regionFilter) && terms.every(t => [c.name, ...c.aliases].join(' ').toLocaleLowerCase().includes(t)));
   $('#cheat-count').textContent = `${fmt(entries.length)} available`;
   stopCheats?.();
-  stopCheats = infiniteList($('#cheat-list'), entries, (c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="cheat-body" aria-busy="true"><p class="loading-label" role="status"><span class="loading-indicator" aria-hidden="true"></span>Loading code…</p></div></details>`, '<div class="empty-list">No codes match these filters.</div>', 'codes');
+  stopCheats = infiniteList($('#cheat-list'), entries, (c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="chevron">${icon('chevron', 16)}</span></summary><div class="cheat-body" aria-busy="true"><p class="loading-label" role="status"><span class="loading-indicator" aria-hidden="true"></span>Loading code…</p></div></details>`, '<div class="empty-list">No codes match these filters.</div>', 'codes');
   if (animate) { reveal($('#cheat-list')); reveal($('#cheat-count'), 0, 120); }
 }
 

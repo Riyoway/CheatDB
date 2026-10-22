@@ -40,7 +40,7 @@ code, pre, kbd { font-family: 'Commit Mono', monospace; }
 .sidebar { width: 216px; position: fixed; inset: 0 auto 0 0; padding: 8px 12px 12px 8px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: #000; }
 .workspace-link { display: flex; align-items: center; gap: 10px; min-height: 32px; font-size: 13px; font-weight: 500; padding-right: 7px; }
 .workspace-avatar { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #ffffff12; border-radius: 7px; background: linear-gradient(140deg, #49364f, #802e50); font-size: 12px; }
-.workspace-arrow { margin-left: auto; color: #979a9b; font-size: 14px; }
+.workspace-arrow { display: flex; margin-left: auto; color: #979a9b; }
 .sidebar-home { margin-top: 4px; }
 .sidebar-section { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 8px; }
 .nav-label { margin: 0 10px 6px; color: #717779; font-size: 11px; }
@@ -118,22 +118,23 @@ kbd { border: 1px solid #33383b; border-radius: 4px; padding: 0 5px; color: #7b7
 .codes-heading > span { font-size: 10px; color: #909090; }
 .cheat { border-bottom: 1px solid #1b1b1b; }
 .cheat:last-child { border-bottom: 0; }
-.cheat summary { display: flex; gap: 10px; align-items: center; padding: 8px 16px; min-height: 46px; list-style: none; cursor: pointer; }
+.cheat summary { display: flex; gap: 10px; align-items: center; padding: 5px 16px; min-height: 34px; list-style: none; cursor: pointer; }
 .cheat summary::-webkit-details-marker { display: none; }
 .cheat-number { color: #767676; font-size: 10px; min-width: 17px; font-variant-numeric: tabular-nums; }
-.cheat-name { flex: 1; min-width: 0; font-size: 13px; line-height: 19px; overflow-wrap: anywhere; }
-.cheat-name small { display: block; color: #909090; font-size: 10px; line-height: 14px; }
+.cheat-name { flex: 1; min-width: 0; font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+.cheat-name small { display: block; color: #909090; font-size: 10px; line-height: 13px; }
 .cheat-name small:empty { display: none; }
-.chevron { color: #909090; transition: transform 200ms var(--ease-out); }
+.chevron { display: grid; place-items: center; width: 16px; height: 16px; flex-shrink: 0; color: #a0a0a0; transition: transform 200ms var(--ease-out); }
+.chevron svg { stroke-width: 2; }
 .cheat[open] .chevron { transform: rotate(180deg); }
 .cheat[data-closing] .chevron { transform: rotate(0); }
 .cheat { transition: background-color 150ms ease; }
 .cheat[open] { background: #090a0b; }
 .cheat[data-animating] { overflow: hidden; }
 .cheat-body { padding: 0 16px 12px; font-size: 12px; color: #a7a7a7; }
-.code-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 8px; font-size: 10px; color: #969696; }
+.code-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; padding-bottom: 4px; font-size: 10px; color: #969696; }
 .code-meta code { color: #c0c0c0; font-size: 10px; overflow-wrap: anywhere; }
-.copy-button { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 4px 9px; min-width: 76px; min-height: 28px; border: 1px solid #343434; border-radius: 6px; background: var(--surface); font-size: 10px; color: #b7b7b7; }
+.copy-button { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 3px 8px; min-width: 76px; min-height: 24px; border: 1px solid #343434; border-radius: 6px; background: var(--surface); font-size: 10px; color: #b7b7b7; }
 .copy-button[data-copied] { color: var(--success); border-color: #46fea540; background: #46fea509; }
 .copy-label { display: inline-block; }
 pre { max-height: 280px; overflow: auto; margin: 0; padding: 10px 12px; border: 1px solid #303030; border-radius: 7px; background: #090b0d; color: #d5d5d5; font-size: 11px; line-height: 1.8; tab-size: 2; }
@@ -172,7 +173,7 @@ pre { max-height: 280px; overflow: auto; margin: 0; padding: 10px 12px; border: 
 .guide-section dd { margin: 3px 0 0; }
 .guide-section pre { margin-top: 12px; }
 .resource-note { color: var(--muted); font-size: 12px; margin: 16px 0; }
-.resource-note a { color: #d0d3d5; }
+.resource-note a { display: inline-flex; align-items: center; gap: 5px; color: #d0d3d5; }
 .boot-screen { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
 .boot-screen h1 { font-size: 24px; }
 .boot-message { color: var(--muted); font-size: 12px; }
@@ -251,7 +252,7 @@ pre { max-height: 280px; overflow: auto; margin: 0; padding: 10px 12px; border: 
 @media (pointer: coarse) {
   .platform-tabs > a, .platform-tabs .selection-copy > span, .outline-button, .copy-button, .select-filters select { min-height: 40px; }
   .searchbox input { min-height: 38px; font-size: 16px; }
-  .cheat summary { min-height: 48px; }
+  .cheat summary { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   button, a, summary, .searchbox, select, .cheat { transition: color 100ms ease, background-color 100ms ease, border-color 100ms ease; }
