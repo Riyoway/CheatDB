@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
-import { chunkCheats, validateDatabase } from './build-web-data.mjs';
+import { chunkCheats, codeStats, validateDatabase } from './build-web-data.mjs';
+
+test('code statistics count physical lines and original UTF-8 bytes, excluding a final empty EOF line', () => {
+  assert.deepEqual(codeStats(''), { lineCount: 0, byteSize: 0 });
+  assert.deepEqual(codeStats('ABCD'), { lineCount: 1, byteSize: 4 });
+  assert.deepEqual(codeStats('AB\nCD\n'), { lineCount: 2, byteSize: 6 });
+  assert.deepEqual(codeStats('AB\r\nCD\r\n'), { lineCount: 2, byteSize: 8 });
+  assert.deepEqual(codeStats('A\rB'), { lineCount: 2, byteSize: 3 });
+  assert.deepEqual(codeStats('A\n\nB'), { lineCount: 3, byteSize: 4 });
+  assert.deepEqual(codeStats('無限\n'), { lineCount: 1, byteSize: 7 });
+});
 
 test('code chunks preserve order, Unicode, multiline codes and metadata at byte boundaries', () => {
   const cheats = Array.from({ length: 205 }, (_, id) => ({ id, name: '無限コイン', code_text: '0123\nABCD', authors: ['作者'] }));

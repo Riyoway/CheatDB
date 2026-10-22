@@ -10,14 +10,15 @@ import { icon } from './icons';
 
 type Platform = { id: string; name: string; games: number; cheats: number };
 type Game = { id: number; name: string; platform: string; externalId: string; cheats: number; aliases: string[]; identifiers: { identifier: string; region: string }[] };
-type Entry = { id: number; name: string; build_id: string | null; region_id: string | null; version: string | null; type: string | null; aliases: string[]; part: number };
+type Entry = { id: number; name: string; build_id: string | null; region_id: string | null; version: string | null; type: string | null; aliases: string[]; part: number; lineCount: number; byteSize: number };
 type GameDetail = Game & { entries: Entry[] };
-type Code = Entry & { code_text: string; notes: string | null; authors: string[] };
+type Code = Omit<Entry, 'part' | 'lineCount' | 'byteSize'> & { code_text: string; notes: string | null; authors: string[] };
 type Catalog = { schemaVersion: number; revision: string; sha256: string; generatedAt: string | null; totalGames: number; totalCheats: number; platforms: Platform[]; games: Game[] };
 
 const base = import.meta.env.BASE_URL;
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const fmt = (n: number) => n.toLocaleString('en-US');
+const codeSize = (bytes: number) => !Number.isFinite(bytes) ? '-' : bytes < 1024 ? `${fmt(bytes)} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KiB` : `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
@@ -114,7 +115,7 @@ function renderPlatforms() {
     syncSelection(container);
   }
   const title = platform ? catalog.platforms.find(p => p.id === platform)!.name : 'Nintendo cheat code database';
-  document.title = `CheatDB · ${title}`;
+  document.title = `CheatDB - ${title}`;
   document.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href = `https://db.riyo.me${publicPath()}`;
 }
 
@@ -157,7 +158,7 @@ async function renderGame() {
     const options = (values: string[]) => values.map(v => `<option value="${escape(v)}">${escape(v)}</option>`).join('');
     $('#game-detail').innerHTML = `<div class="detail-header"><div class="detail-title"><h2>${escape(game.name)}</h2><span class="platform-badge">${escape(catalog.platforms.find(p => p.id === game.platform)?.name)}</span></div><div class="game-id"><span>Title ID</span><code>${escape(game.externalId)}</code></div>${game.identifiers.length ? `<div class="identifiers">${game.identifiers.map(i => `<span>${escape(i.identifier)}${i.region ? ` · ${escape(i.region)}` : ''}</span>`).join('')}</div>` : ''}<p class="compatibility">Match the game version, build and region before using a code.</p></div>
       <div class="code-toolbar"><label class="searchbox compact">${icon('search', 16)}<input id="cheat-search" type="search" placeholder="Search cheat names…" aria-label="Search cheat names"/></label><div class="select-filters">${builds.length ? `<label>Build<select id="build-filter"><option value="">All builds</option>${options(builds)}</select></label>` : ''}${regions.length ? `<label>Region<select id="region-filter"><option value="">All regions</option>${options(regions)}</select></label>` : ''}</div></div>
-      <div class="codes-heading"><h3>Cheat codes</h3><span id="cheat-count" role="status"></span></div><div id="cheat-list" tabindex="0" role="region" aria-label="Cheat code list"></div>`;
+      <div class="codes-heading"><div class="codes-heading-title"><h3>Cheat codes</h3><span id="cheat-count" role="status"></span></div><div class="cheat-stats" aria-hidden="true"><span>Lines</span><span title="Size of the original code text in UTF-8 bytes">Size</span></div></div><div id="cheat-list" tabindex="0" role="region" aria-label="Cheat code list"></div>`;
     $('#cheat-search').addEventListener('input', event => { cheatQuery = (event.target as HTMLInputElement).value; renderCheats(); });
     document.querySelector('#build-filter')?.addEventListener('change', event => { buildFilter = (event.target as HTMLSelectElement).value; renderCheats(); });
     document.querySelector('#region-filter')?.addEventListener('change', event => { regionFilter = (event.target as HTMLSelectElement).value; renderCheats(); });
@@ -179,7 +180,7 @@ function renderCheats(animate = true) {
   const entries = detail.entries.filter(c => (!buildFilter || c.build_id === buildFilter) && (!regionFilter || c.region_id === regionFilter) && terms.every(t => [c.name, ...c.aliases].join(' ').toLocaleLowerCase().includes(t)));
   $('#cheat-count').textContent = `${fmt(entries.length)} available`;
   stopCheats?.();
-  stopCheats = infiniteList($('#cheat-list'), entries, (c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="chevron">${icon('chevron', 16)}</span></summary><div class="cheat-body" aria-busy="true"><p class="loading-label" role="status"><span class="loading-indicator" aria-hidden="true"></span>Loading code…</p></div></details>`, '<div class="empty-list">No codes match these filters.</div>', 'codes');
+  stopCheats = infiniteList($('#cheat-list'), entries, (c, i) => `<details class="cheat" data-cheat="${c.id}" data-part="${c.part}"><summary><span class="cheat-number">${String(i + 1).padStart(2, '0')}</span><span class="cheat-name">${escape(c.name)}<small>${escape([c.version && `v${c.version}`, c.region_id, c.type].filter(Boolean).join(' · '))}</small></span><span class="cheat-stats"><span class="cheat-lines" title="Line count"><span class="sr-only">Lines: </span>${Number.isFinite(c.lineCount) ? fmt(c.lineCount) : '-'}</span><span class="cheat-size" title="Size of the original code text in UTF-8 bytes">${codeSize(c.byteSize)}</span></span><span class="chevron">${icon('chevron', 16)}</span></summary><div class="cheat-body" aria-busy="true"><p class="loading-label" role="status"><span class="loading-indicator" aria-hidden="true"></span>Loading code…</p></div></details>`, '<div class="empty-list">No codes match these filters.</div>', 'codes');
   if (animate) { reveal($('#cheat-list')); reveal($('#cheat-count'), 0, 120); }
 }
 
@@ -274,7 +275,7 @@ function showRoute() {
   if (resourcePage) {
     ++gameRequest; stopGames?.(); stopCheats?.(); detail = null;
     $('#resource-view').innerHTML = resourceContent(resourcePage, base);
-    document.title = `CheatDB · ${resourcePage === 'downloads' ? 'Downloads' : 'Guide & documentation'}`;
+    document.title = `CheatDB - ${resourcePage === 'downloads' ? 'Downloads' : 'Guide & documentation'}`;
     document.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href = `https://db.riyo.me${base}${resourcePage}/`;
     reveal($('#resource-view'), 4, 200);
     return;

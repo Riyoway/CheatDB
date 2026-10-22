@@ -10,6 +10,12 @@ export const webOutput = join(root, 'exports', 'web');
 const canonical = join(root, 'data', 'cheatdb.db');
 const digest = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 
+export function codeStats(text) {
+  const lines = text.split(/\r\n|\r|\n/);
+  if (lines.at(-1) === '') lines.pop();
+  return { lineCount: lines.length, byteSize: Buffer.byteLength(text, 'utf8') };
+}
+
 export function validateDatabase(db) {
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
   assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
@@ -76,8 +82,8 @@ export function generateWebData() {
       const summaries = [];
       chunkCheats(cheats).forEach((chunk, part) => {
         write(join(dataPath, 'codes', `${game.id}-${part}.json`), chunk);
-        for (const { id, name, build_id, region_id, version, type, aliases } of chunk) {
-          summaries.push({ id, name, build_id, region_id, version, type, aliases, part });
+        for (const { id, name, build_id, region_id, version, type, aliases, code_text } of chunk) {
+          summaries.push({ id, name, build_id, region_id, version, type, aliases, part, ...codeStats(code_text) });
         }
       });
       write(join(dataPath, 'games', `${game.id}.json`), { ...game, entries: summaries });
