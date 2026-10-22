@@ -92,7 +92,6 @@ function shell() {
           <div class="toolbar"><label class="searchbox">${icon('search', 16)}<input id="game-search" type="search" placeholder="Search games, title IDs or aliases…" aria-label="Search games, title IDs or aliases" autocomplete="off"/><kbd>/</kbd></label><a class="outline-button" aria-label="Download dataset" href="${base}downloads/" data-resource="downloads">${icon('arrow', 14)}<span>Downloads</span></a></div></div>
           <div class="browser"><section class="game-pane" aria-label="Games"><div class="pane-label">Game<span>Codes</span></div><div id="game-list" tabindex="0" role="region" aria-label="Game list"></div></section><section id="game-detail" class="detail-pane" aria-label="Selected game"></section></div>
         </section>
-        <section class="panel dataset-panel" aria-labelledby="dataset-heading"><div class="panel-heading"><h2 id="dataset-heading">About this dataset</h2><span class="snapshot"><span class="status-dot"></span>Available</span></div><p class="panel-description">Nintendo cheat codes with build identifiers, regions and author credits. Compatibility depends on the exact game version and environment.</p><div class="panel-footer"><span>${catalog.generatedAt ? `Updated ${escape(catalog.generatedAt.slice(0, 10))}` : 'SQLite snapshot'}<span class="footer-separator">·</span>SQLite, JSON and JSONL</span><a href="${base}docs/" data-resource="docs">Dataset guide ${icon('arrow', 13)}</a></div></section>
         </div><div id="resource-view" hidden></div>
     </main>`;
   $('#game-search').addEventListener('input', event => {
@@ -111,7 +110,7 @@ function shell() {
   });
   observeSelections([$('#platform-tabs'), $('#platform-nav')]);
   reveal($('.sidebar'), 0, 200);
-  ['.page-header', '.platform-tabs', '.library', '.dataset-panel'].forEach((selector, i) => reveal($(selector), 4, 200, i * 30));
+  ['.page-header', '.platform-tabs', '.library'].forEach((selector, i) => reveal($(selector), 4, 200, i * 30));
 }
 
 function renderPlatforms() {
