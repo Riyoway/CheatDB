@@ -22,4 +22,5 @@ const html = readFileSync(join(dist, 'index.html'), 'utf8');
 assert(html.includes('src="/cheatdb/assets/'));
 assert(!/(?:href|src)="\/(?!cheatdb\/)/.test(html), 'Root-relative asset found');
 assert.equal(readFileSync(join(dist, '_redirects'), 'utf8'), '/* /index.html 200\n');
+assert.deepEqual(JSON.parse(readFileSync(join(dist, '_routes.json'), 'utf8')), { version: 1, include: ['/download/*'], exclude: [] });
 console.log(`Pages build verified: ${files} files, all <25 MiB, assets under /cheatdb/`);

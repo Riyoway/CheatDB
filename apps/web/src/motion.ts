@@ -25,7 +25,12 @@ export function reveal(element: HTMLElement, distance = 0, duration = 160, delay
 export function syncSelection(container: HTMLElement, instant = false) {
   const links = [...container.querySelectorAll<HTMLAnchorElement>(':scope > a')];
   const active = links.find(link => link.classList.contains('active'));
-  if (!active || !container.offsetWidth) return;
+  if (!active) {
+    container.querySelector('.selection-copy')?.remove();
+    container.classList.remove('has-selection');
+    return;
+  }
+  if (!container.offsetWidth) return;
   let copy = container.querySelector<HTMLElement>('.selection-copy');
   if (!copy) {
     copy = document.createElement('div');

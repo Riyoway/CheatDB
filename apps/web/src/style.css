@@ -14,6 +14,7 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; font-size: 14px; line-height: 1.5; }
 a { color: inherit; text-decoration: none; }
 button, input, select { font: inherit; color: inherit; }
@@ -45,6 +46,7 @@ code, pre, kbd { font-family: 'Commit Mono', monospace; }
 .nav-label { margin: 0 10px 6px; color: #717779; font-size: 11px; }
 .nav-item, .resources a { min-height: 32px; padding: 6px 10px; display: flex; align-items: center; gap: 9px; border-radius: 7px; font-size: 13px; color: #b4b8ba; margin-bottom: 2px; }
 .nav-item.active { background: var(--surface); color: #ededed; }
+.resources a.active { background: var(--surface); color: #ededed; }
 .nav-item > span { flex: 1; }
 .nav-item small { font-size: 10px; color: #717779; font-variant-numeric: tabular-nums; }
 .database-link { color: #ededed; }
@@ -150,6 +152,28 @@ pre { max-height: 280px; overflow: auto; margin: 0; padding: 10px 12px; border: 
 .panel-message a { color: var(--focus); }
 
 .dataset-panel { margin-top: 12px; }
+.resource-intro { color: var(--muted); max-width: 680px; margin: 14px 0 20px; font-size: 13px; }
+.resource-panel { margin-bottom: 12px; }
+.download-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px; border-bottom: 1px solid var(--divider); }
+.download-row:last-child { border-bottom: 0; }
+.download-row > div { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; }
+.download-row .platform-badge { justify-self: start; }
+.download-row h2 { font-size: 14px; }
+.download-row p { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.download-row code { grid-column: 1 / -1; color: #b1b5b7; font-size: 10px; }
+.download-row .outline-button { flex-shrink: 0; }
+.guide-section { padding: 16px; max-width: 900px; }
+.guide-section h2 { font-size: 15px; margin-bottom: 12px; }
+.guide-section p, .guide-section li, .guide-section dd { font-size: 13px; color: var(--muted); line-height: 1.8; }
+.guide-section p + p { margin-top: 8px; }
+.guide-section ol { margin: 0 0 16px; padding-left: 20px; }
+.guide-section li + li { margin-top: 6px; }
+.guide-section dl { margin: 0 0 16px; }
+.guide-section dt { font-size: 13px; font-weight: 500; margin-top: 10px; }
+.guide-section dd { margin: 3px 0 0; }
+.guide-section pre { margin-top: 12px; }
+.resource-note { color: var(--muted); font-size: 12px; margin: 16px 0; }
+.resource-note a { color: #d0d3d5; }
 .snapshot { display: flex; align-items: center; gap: 7px; color: #8f8f8f; font-size: 11px; }
 .panel-description { padding: 0 16px 12px; color: #9b9b9b; font-size: 12px; line-height: 1.6; }
 .panel-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--divider); padding: 8px 16px; color: #888888; font-size: 11px; }
@@ -230,6 +254,9 @@ pre { max-height: 280px; overflow: auto; margin: 0; padding: 10px 12px; border: 
   .panel-description { font-size: 12px; }
   .panel-footer { align-items: flex-start; flex-direction: column; font-size: 10px; }
   .snapshot { font-size: 10px; }
+  .download-row { align-items: flex-start; padding: 12px; gap: 12px; }
+  .download-row h2 { font-size: 13px; }
+  .guide-section { padding: 12px; }
 }
 @media (pointer: coarse) {
   .platform-tabs > a, .platform-tabs .selection-copy > span, .outline-button, .copy-button, .select-filters select { min-height: 40px; }

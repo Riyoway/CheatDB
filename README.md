@@ -96,6 +96,8 @@ WHERE platform = 'wiiu'
 
 The dedicated browser lives in `apps/web/` and is published at **https://db.riyo.me/cheatdb/**. It supports game/title-ID/alias search, platform filtering, build and region filters, cheat-name search, author credits, and code copying. Selected games and searches can be linked using `?game=1&q=Mario`.
 
+The on-site guide is at `/cheatdb/docs/` and direct dataset downloads are listed at `/cheatdb/downloads/`. The Pages Function under `apps/web/functions/download/` streams allowlisted, original repository files as attachments through `/cheatdb/download/<filename>`. It does not copy the canonical SQLite database into the Web build. Only download requests invoke the Function; browsing and documentation remain static Pages assets.
+
 ```sh
 cd apps/web
 npm ci

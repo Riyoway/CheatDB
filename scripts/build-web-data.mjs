@@ -91,6 +91,7 @@ export function generateWebData() {
     });
     assert(files < 19500, 'Generated data approaches the Cloudflare Pages free plan file limit');
     writeFileSync(join(webOutput, '_redirects'), '/* /index.html 200\n');
+    writeFileSync(join(webOutput, '_routes.json'), JSON.stringify({ version: 1, include: ['/download/*'], exclude: [] }));
     writeFileSync(join(webOutput, '_headers'), `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src 'none'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'\n/data/*\n  Cache-Control: public, max-age=0, must-revalidate\n`);
     console.log(`${games.length} games / ${cheatTotal} cheats → exports/web (${files} JSON files; largest ${largest.toLocaleString()} bytes)`);
     return { files, largest, games: games.length, cheats: cheatTotal };

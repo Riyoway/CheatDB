@@ -5,6 +5,7 @@ import '@fontsource/commit-mono/latin-400.css';
 import './style.css';
 import { observeSelections, reveal, syncSelection, toggleDisclosure, updateDisclosure } from './motion';
 import { infiniteList } from './infinite-list';
+import { resourceContent } from './resources';
 
 type Platform = { id: string; name: string; games: number; cheats: number };
 type Game = { id: number; name: string; platform: string; externalId: string; cheats: number; aliases: string[]; identifiers: { identifier: string; region: string }[] };
@@ -28,7 +29,7 @@ const icon = (name: string, size = 18) => {
     code: '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-12-2 14"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
     check: '<path d="m5 12 4 4L19 6"/>',
-    github: '<path d="M9 19c-4 1-4-2-6-2m12 4v-3c0-1-.2-2-1-2 4-.5 6-2 6-6 0-1-.5-2-1-3 .2-1 .2-2-.2-3-2 0-3 1-3 1-2-.6-4-.6-6 0 0 0-1-1-3-1-.4 1-.4 2-.2 3-.5 1-1 2-1 3 0 4 2 5.5 6 6-.8.5-1 1-1 2v3"/>',
+    book: '<path d="M12 5v15m0-15C8 2 4 3 3 4v15c3-2 6-1 9 1m0-15c4-3 8-2 9-1v15c-3-2-6-1-9 1"/>',
   };
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] ?? paths.game}</svg>`;
 };
@@ -43,6 +44,7 @@ async function json<T>(path: string): Promise<T> {
 
 let catalog: Catalog;
 let platform = '', query = '', selected = 0;
+let resourcePage = '';
 let detail: GameDetail | null = null;
 let gameRequest = 0;
 let cheatQuery = '', buildFilter = '', regionFilter = '';
@@ -51,9 +53,9 @@ const codeCache = new Map<string, Promise<Code[]>>();
 
 function publicPath(id = platform) { return `${base}${id ? `${id}/` : ''}`; }
 function updateUrl(replace = false) {
-  const url = new URL(publicPath(), location.origin);
-  if (query) url.searchParams.set('q', query);
-  if (selected) url.searchParams.set('game', String(selected));
+  const url = new URL(resourcePage ? `${base}${resourcePage}/` : publicPath(), location.origin);
+  if (!resourcePage && query) url.searchParams.set('q', query);
+  if (!resourcePage && selected) url.searchParams.set('game', String(selected));
   history[replace ? 'replaceState' : 'pushState']({}, '', url);
 }
 
@@ -61,6 +63,8 @@ function readUrl() {
   const path = location.pathname;
   if (path === base.slice(0, -1)) history.replaceState({}, '', `${base}${location.search}${location.hash}`);
   const remainder = location.pathname.startsWith(base) ? location.pathname.slice(base.length).replace(/\/$/, '') : '?';
+  resourcePage = ['downloads', 'docs'].includes(remainder) ? remainder : '';
+  if (resourcePage) { platform = ''; query = ''; selected = 0; return true; }
   if (remainder && !catalog.platforms.some(p => p.id === remainder)) return false;
   platform = remainder;
   const params = new URLSearchParams(location.search);
@@ -76,18 +80,20 @@ function shell() {
       <a class="workspace-link" href="https://db.riyo.me/" aria-label="Riyo databases portal"><span class="workspace-avatar">R</span><span>Riyo databases</span><span class="workspace-arrow" aria-hidden="true">↗</span></a>
       <nav class="sidebar-home" aria-label="Database navigation"><a href="${base}" data-platform="" class="nav-item database-link">${icon('database', 17)}<span>CheatDB</span></a></nav>
       <div class="sidebar-section"><p class="nav-label">Platforms</p><nav aria-label="Platforms" id="platform-nav"></nav></div>
-      <nav class="sidebar-section resources" aria-label="Resources"><a href="https://github.com/Riyoway/CheatDB/tree/main/exports">${icon('code', 17)}<span>Dataset exports</span></a><a href="https://github.com/Riyoway/CheatDB">${icon('github', 17)}<span>Source repository</span></a><a href="https://github.com/Riyoway/CheatDB#readme">${icon('external', 16)}<span>Documentation</span></a></nav>
-      <div class="sidebar-footer"><span class="status-dot"></span><span>Read-only dataset</span><a href="https://github.com/Riyoway/CheatDB/issues" aria-label="Report an issue">${icon('external', 14)}</a></div>
+      <nav class="sidebar-section resources" aria-label="Resources"><a href="${base}downloads/" data-resource="downloads">${icon('code', 17)}<span>Downloads</span></a><a href="${base}docs/" data-resource="docs">${icon('book', 16)}<span>Guide & documentation</span></a></nav>
+      <div class="sidebar-footer"><span class="status-dot"></span><span>Read-only dataset</span><a href="${base}docs/" data-resource="docs" aria-label="Help and documentation">${icon('book', 14)}</a></div>
     </aside>
     <main id="main" class="workspace" tabindex="-1">
         <header class="page-header"><h1>CheatDB</h1><span class="dataset-total">${fmt(catalog.totalGames)} games <span>·</span> ${fmt(catalog.totalCheats)} codes</span></header>
+        <div id="browser-view">
         <nav id="platform-tabs" class="platform-tabs" aria-label="Filter by platform"></nav>
         <section id="library" class="library panel" aria-labelledby="library-heading">
           <div class="library-controls"><div class="panel-heading"><h2 id="library-heading">Games and cheat codes</h2><span id="result-count" class="muted" role="status"></span></div>
-          <div class="toolbar"><label class="searchbox">${icon('search', 16)}<input id="game-search" type="search" placeholder="Search games, title IDs or aliases…" aria-label="Search games, title IDs or aliases" autocomplete="off"/><kbd>/</kbd></label><a class="outline-button" aria-label="View dataset exports" href="https://github.com/Riyoway/CheatDB/tree/main/exports">${icon('external', 14)}<span>View exports</span></a></div></div>
+          <div class="toolbar"><label class="searchbox">${icon('search', 16)}<input id="game-search" type="search" placeholder="Search games, title IDs or aliases…" aria-label="Search games, title IDs or aliases" autocomplete="off"/><kbd>/</kbd></label><a class="outline-button" aria-label="Download dataset" href="${base}downloads/" data-resource="downloads">${icon('arrow', 14)}<span>Downloads</span></a></div></div>
           <div class="browser"><section class="game-pane" aria-label="Games"><div class="pane-label">Game<span>Codes</span></div><div id="game-list" tabindex="0" role="region" aria-label="Game list"></div></section><section id="game-detail" class="detail-pane" aria-label="Selected game"></section></div>
         </section>
-        <section class="panel dataset-panel" aria-labelledby="dataset-heading"><div class="panel-heading"><h2 id="dataset-heading">About this dataset</h2><span class="snapshot"><span class="status-dot"></span>Available</span></div><p class="panel-description">Nintendo cheat codes with build identifiers, regions and author credits. Compatibility depends on the exact game version and environment.</p><div class="panel-footer"><span>${catalog.generatedAt ? `Updated ${escape(catalog.generatedAt.slice(0, 10))}` : 'SQLite snapshot'}<span class="footer-separator">·</span>SQLite, JSON and JSONL</span><a href="https://github.com/Riyoway/CheatDB#readme">Dataset documentation ${icon('external', 13)}</a></div></section>
+        <section class="panel dataset-panel" aria-labelledby="dataset-heading"><div class="panel-heading"><h2 id="dataset-heading">About this dataset</h2><span class="snapshot"><span class="status-dot"></span>Available</span></div><p class="panel-description">Nintendo cheat codes with build identifiers, regions and author credits. Compatibility depends on the exact game version and environment.</p><div class="panel-footer"><span>${catalog.generatedAt ? `Updated ${escape(catalog.generatedAt.slice(0, 10))}` : 'SQLite snapshot'}<span class="footer-separator">·</span>SQLite, JSON and JSONL</span><a href="${base}docs/" data-resource="docs">Dataset guide ${icon('arrow', 13)}</a></div></section>
+        </div><div id="resource-view" hidden></div>
     </main>`;
   $('#game-search').addEventListener('input', event => {
     query = (event.target as HTMLInputElement).value;
@@ -100,7 +106,7 @@ function shell() {
   }, true);
   document.addEventListener('keydown', event => {
     if (event.key === '/' && !event.metaKey && !event.ctrlKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement)?.tagName)) {
-      event.preventDefault(); $('#game-search').focus();
+      if (!resourcePage) { event.preventDefault(); $('#game-search').focus(); }
     }
   });
   observeSelections([$('#platform-tabs'), $('#platform-nav')]);
@@ -116,7 +122,7 @@ function renderPlatforms() {
   }
   for (const container of [$('#platform-nav'), $('#platform-tabs')]) {
     container.querySelectorAll<HTMLElement>(':scope > a').forEach(link => {
-      const active = link.dataset.platform === platform;
+      const active = !resourcePage && link.dataset.platform === platform;
       link.classList.toggle('active', active);
       if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
     });
@@ -246,12 +252,15 @@ function handleClick(event: MouseEvent) {
     toggleDisclosure(summary.parentElement, event);
     return;
   }
-  const target = (event.target as Element).closest<HTMLElement>('[data-platform], [data-game], [data-retry-game], [data-retry-code]');
+  const target = (event.target as Element).closest<HTMLElement>('[data-platform], [data-resource], [data-game], [data-retry-game], [data-retry-code]');
   if (!target || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
-  if (target.hasAttribute('data-platform')) {
+  if (target.dataset.resource) {
+    event.preventDefault(); resourcePage = target.dataset.resource;
+    updateUrl(); showRoute(); window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (target.hasAttribute('data-platform')) {
     event.preventDefault();
-    platform = target.dataset.platform!; selected = 0;
-    updateUrl(); renderPlatforms(); renderGames(); void renderGame();
+    platform = target.dataset.platform!; selected = 0; resourcePage = '';
+    updateUrl(); showRoute();
   } else if (target.dataset.game) {
     event.preventDefault(); selected = Number(target.dataset.game);
     updateUrl();
@@ -267,7 +276,25 @@ function handleClick(event: MouseEvent) {
 }
 
 function showRoute() {
-  if (!readUrl()) {
+  const valid = readUrl();
+  $('#browser-view').hidden = !!resourcePage;
+  $('#resource-view').hidden = !resourcePage;
+  $('.page-header h1').textContent = resourcePage === 'downloads' ? 'Downloads' : resourcePage === 'docs' ? 'Guide & documentation' : 'CheatDB';
+  document.querySelectorAll<HTMLElement>('.resources [data-resource]').forEach(link => {
+    const active = link.dataset.resource === resourcePage;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+  });
+  renderPlatforms();
+  if (resourcePage) {
+    ++gameRequest; stopGames?.(); stopCheats?.(); detail = null;
+    $('#resource-view').innerHTML = resourceContent(resourcePage, base);
+    document.title = `CheatDB · ${resourcePage === 'downloads' ? 'Downloads' : 'Guide & documentation'}`;
+    document.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href = `https://db.riyo.me${base}${resourcePage}/`;
+    reveal($('#resource-view'), 4, 200);
+    return;
+  }
+  if (!valid) {
     ++gameRequest;
     stopGames?.(); stopCheats?.();
     detail = null;
@@ -278,7 +305,7 @@ function showRoute() {
   }
   $('#game-search').setAttribute('value', query);
   ($<HTMLInputElement>('#game-search')).value = query;
-  renderPlatforms(); renderGames(); void renderGame();
+  renderGames(); void renderGame();
 }
 
 async function boot() {
@@ -288,7 +315,7 @@ async function boot() {
     shell(); showRoute();
     window.addEventListener('popstate', showRoute);
   } catch (error) {
-    app.innerHTML = `<main class="boot-error"><h1>CheatDB</h1><p role="alert">${escape((error as Error).message)}</p><button class="outline-button" id="reload">Reload dataset</button><a href="https://github.com/Riyoway/CheatDB">Browse on GitHub ${icon('external', 15)}</a></main>`;
+    app.innerHTML = `<main class="boot-error"><h1>CheatDB</h1><p role="alert">${escape((error as Error).message)}</p><button class="outline-button" id="reload">Reload dataset</button><a href="${base}download/cheatdb.db" download>Download SQLite ${icon('arrow', 15)}</a></main>`;
     $('#reload').addEventListener('click', () => location.reload());
     reveal($('.boot-error'), 4, 200);
   }
