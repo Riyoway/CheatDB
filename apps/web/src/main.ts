@@ -7,6 +7,7 @@ import { observeSelections, reveal, syncSelection, toggleDisclosure, updateDiscl
 import { infiniteList } from './infinite-list';
 import { resourceContent } from './resources';
 import { icon } from './icons';
+import { setupFilters } from './filter-select';
 
 type Platform = { id: string; name: string; games: number; cheats: number };
 type Game = { id: number; name: string; platform: string; externalId: string; cheats: number; aliases: string[]; identifiers: { identifier: string; region: string }[] };
@@ -36,6 +37,7 @@ let detail: GameDetail | null = null;
 let gameRequest = 0;
 let cheatQuery = '', buildFilter = '', regionFilter = '';
 let stopGames: (() => void) | undefined, stopCheats: (() => void) | undefined;
+let stopFilters: (() => void) | undefined;
 const codeCache = new Map<string, Promise<Code[]>>();
 
 function publicPath(id = platform) { return `${base}${id ? `${id}/` : ''}`; }
@@ -91,7 +93,7 @@ function shell() {
     if (target instanceof HTMLDetailsElement && target.open && target.dataset.cheat) void loadCode(target);
   }, true);
   document.addEventListener('keydown', event => {
-    if (event.key === '/' && !event.metaKey && !event.ctrlKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement)?.tagName)) {
+    if (event.key === '/' && !event.defaultPrevented && !event.metaKey && !event.ctrlKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement)?.tagName)) {
       if (!resourcePage) { event.preventDefault(); $('#game-search').focus(); }
     }
   });
@@ -137,6 +139,7 @@ function renderGames() {
 
 async function renderGame() {
   const request = ++gameRequest;
+  stopFilters?.(); stopFilters = undefined;
   stopCheats?.(); stopCheats = undefined;
   detail = null; codeCache.clear();
   cheatQuery = ''; buildFilter = ''; regionFilter = '';
@@ -155,13 +158,15 @@ async function renderGame() {
     detail = game;
     const builds = [...new Set(game.entries.map(c => c.build_id).filter((v): v is string => !!v))];
     const regions = [...new Set(game.entries.map(c => c.region_id).filter((v): v is string => !!v))];
-    const options = (values: string[]) => values.map(v => `<option value="${escape(v)}">${escape(v)}</option>`).join('');
+    const filter = (id: string, label: string, all: string, values: string[]) => `<div class="filter-select"><span id="${id}-label">${label}</span><button type="button" id="${id}" class="filter-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="${id}-menu" aria-labelledby="${id}-label ${id}-value"><span class="filter-value" id="${id}-value">${all}</span>${icon('chevron', 14)}</button><div id="${id}-menu" class="filter-menu" popover="auto" role="listbox" aria-labelledby="${id}-label">${['', ...values].map(value => `<button type="button" class="filter-option" role="option" aria-selected="${!value}" tabindex="-1" data-value="${escape(value)}"><span class="filter-option-label">${escape(value || all)}</span>${icon('check', 14)}</button>`).join('')}</div></div>`;
     $('#game-detail').innerHTML = `<div class="detail-header"><div class="detail-title"><h2>${escape(game.name)}</h2><span class="platform-badge">${escape(catalog.platforms.find(p => p.id === game.platform)?.name)}</span></div><div class="game-id"><span>Title ID</span><code>${escape(game.externalId)}</code></div>${game.identifiers.length ? `<div class="identifiers">${game.identifiers.map(i => `<span>${escape(i.identifier)}${i.region ? ` · ${escape(i.region)}` : ''}</span>`).join('')}</div>` : ''}<p class="compatibility">Match the game version, build and region before using a code.</p></div>
-      <div class="code-toolbar"><label class="searchbox compact">${icon('search', 16)}<input id="cheat-search" type="search" placeholder="Search cheat names…" aria-label="Search cheat names"/></label><div class="select-filters">${builds.length ? `<label>Build<select id="build-filter"><option value="">All builds</option>${options(builds)}</select></label>` : ''}${regions.length ? `<label>Region<select id="region-filter"><option value="">All regions</option>${options(regions)}</select></label>` : ''}</div></div>
+      <div class="code-toolbar"><label class="searchbox compact">${icon('search', 16)}<input id="cheat-search" type="search" placeholder="Search cheat names…" aria-label="Search cheat names"/></label><div class="select-filters">${builds.length ? filter('build-filter', 'Build', 'All builds', builds) : ''}${regions.length ? filter('region-filter', 'Region', 'All regions', regions) : ''}</div></div>
       <div class="codes-heading"><div class="codes-heading-title"><h3>Cheat codes</h3><span id="cheat-count" role="status"></span></div><div class="cheat-stats" aria-hidden="true"><span>Lines</span><span title="Size of the original code text in UTF-8 bytes">Size</span></div></div><div id="cheat-list" tabindex="0" role="region" aria-label="Cheat code list"></div>`;
     $('#cheat-search').addEventListener('input', event => { cheatQuery = (event.target as HTMLInputElement).value; renderCheats(); });
-    document.querySelector('#build-filter')?.addEventListener('change', event => { buildFilter = (event.target as HTMLSelectElement).value; renderCheats(); });
-    document.querySelector('#region-filter')?.addEventListener('change', event => { regionFilter = (event.target as HTMLSelectElement).value; renderCheats(); });
+    stopFilters = setupFilters($('#game-detail'), (id, value) => {
+      if (id === 'build-filter') buildFilter = value; else regionFilter = value;
+      renderCheats();
+    });
     $('#game-detail').removeAttribute('aria-busy');
     renderCheats(false);
     reveal($('#game-detail'), 4, 200);
@@ -262,6 +267,7 @@ function handleClick(event: MouseEvent) {
 }
 
 function showRoute() {
+  stopFilters?.(); stopFilters = undefined;
   const valid = readUrl();
   $('#browser-view').hidden = !!resourcePage;
   $('#resource-view').hidden = !resourcePage;

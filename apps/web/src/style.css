@@ -27,7 +27,7 @@ input, select { min-width: 0; }
 svg { flex-shrink: 0; }
 button, a, summary, .searchbox, select { transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms var(--ease-out); }
 button:not(:disabled):active, .outline-button:active { transform: scale(.97); }
-a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, pre:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, pre:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 #game-list:focus-visible, #cheat-list:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { font-weight: 600; }
@@ -113,8 +113,21 @@ kbd { border: 1px solid #33383b; border-radius: 4px; padding: 0 5px; color: #7b7
 .compact input { font-size: 12px; }
 .select-filters { display: flex; gap: 8px; flex-wrap: wrap; }
 .select-filters:empty { display: none; }
-.select-filters label { display: flex; align-items: center; gap: 6px; color: #989898; font-size: 10px; min-width: 0; max-width: 100%; }
-.select-filters select { min-height: 32px; background: var(--surface); border: 1px solid #333333; border-radius: 7px; padding: 4px 6px; font-size: 11px; max-width: 230px; }
+.filter-select { display: flex; align-items: center; gap: 6px; color: #989898; font-size: 10px; min-width: 0; max-width: 100%; }
+.filter-trigger { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 32px; max-width: 230px; background: var(--surface); border: 1px solid #333; border-radius: 7px; padding: 4px 9px; font-size: 11px; text-align: left; }
+.filter-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filter-trigger > svg { margin-left: auto; color: #8f9598; transition: transform 160ms var(--ease-out); }
+.filter-trigger[aria-expanded="true"] { border-color: #666; }
+.filter-trigger[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.filter-menu { position: fixed; inset: auto; margin: 0; padding: 4px; color: #d5d7d8; background: #151618; border: 1px solid #34383b; border-radius: 9px; box-shadow: 0 8px 28px #0009; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #3b4044 transparent; }
+.filter-menu:popover-open { animation: filter-enter 140ms var(--ease-out); }
+.filter-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 5px 8px; border: 0; border-radius: 5px; background: transparent; color: #aeb3b6; text-align: left; font-size: 11px; }
+.filter-option-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.filter-option > svg { visibility: hidden; }
+.filter-option[aria-selected="true"] { color: #f1f1f1; }
+.filter-option[aria-selected="true"] > svg { visibility: visible; }
+.filter-option:hover, .filter-option:focus-visible { background: #24272a; color: #fff; }
+@keyframes filter-enter { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .codes-heading { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 7px 16px; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); flex-shrink: 0; }
 .codes-heading-title { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
 .codes-heading h3 { font-size: 12px; font-weight: 500; }
@@ -258,13 +271,13 @@ pre { max-height: 280px; overflow: auto; margin: 0; padding: 10px 12px; border: 
   .guide-section { padding: 12px; }
 }
 @media (pointer: coarse) {
-  .platform-tabs > a, .platform-tabs .selection-copy > span, .outline-button, .copy-button, .select-filters select { min-height: 40px; }
+  .platform-tabs > a, .platform-tabs .selection-copy > span, .outline-button, .copy-button, .filter-trigger, .filter-option { min-height: 40px; }
   .searchbox input { min-height: 38px; font-size: 16px; }
   .cheat summary { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   button, a, summary, .searchbox, select, .cheat { transition: color 100ms ease, background-color 100ms ease, border-color 100ms ease; }
   button:not(:disabled):active, .outline-button:active { transform: none; }
-  .selection-copy, .chevron { transition: none; }
-  .loading-indicator, .skeleton::after, .game-loading { animation: none; }
+  .selection-copy, .chevron, .filter-trigger > svg { transition: none; }
+  .loading-indicator, .skeleton::after, .game-loading, .filter-menu:popover-open { animation: none; }
 }
