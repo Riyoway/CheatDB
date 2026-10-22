@@ -4,8 +4,8 @@ import { icon } from './icons';
 export function resourceContent(page: string, base: string) {
   if (page === 'downloads') return `
     <p class="resource-intro">Download the dataset directly. Choose SQLite for the complete database, or a format for your own tools.</p>
-    <section class="panel resource-panel" aria-label="Dataset downloads">${downloads.map(file => `
-      <div class="download-row"><div><span class="platform-badge">${file.format}</span><h2>${file.name}</h2><p>${file.description}</p><code>${file.filename}</code></div><a class="outline-button" href="${base}download/${file.filename}" download="${file.filename}" aria-label="Download ${file.filename}">Download ${icon('download', 14)}</a></div>`).join('')}</section>
+    ${[...new Set(downloads.map(file => file.format))].map(format => `<section class="panel resource-panel download-format" aria-label="${format} downloads"><header class="download-format-header"><h2>${format}</h2></header>${downloads.filter(file => file.format === format).map(file => `
+      <div class="download-row"><div><h3>${file.name}</h3><p>${file.description}</p><code>${file.filename}</code></div><a class="outline-button" href="${base}download/${file.filename}" download="${file.filename}" aria-label="Download ${file.filename}">Download ${icon('download', 14)}</a></div>`).join('')}</section>`).join('')}
     <p class="resource-note">Not sure which format to choose? <a href="${base}docs/" data-resource="docs">Read the dataset guide ${icon('arrow', 14)}</a></p>`;
   return `
     <p class="resource-intro">Find a game, check compatibility, and copy the code you need. The Lines and Size columns show each code's line count and UTF-8 text size.</p>

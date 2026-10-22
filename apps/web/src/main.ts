@@ -70,7 +70,6 @@ function shell() {
       <nav class="sidebar-home" aria-label="Database navigation"><a href="${base}" data-platform="" class="nav-item database-link">${icon('database', 17)}<span>CheatDB</span></a></nav>
       <div class="sidebar-section"><p class="nav-label">Platforms</p><nav aria-label="Platforms" id="platform-nav"></nav></div>
       <nav class="sidebar-section resources" aria-label="Resources"><a href="${base}downloads/" data-resource="downloads">${icon('code', 17)}<span>Downloads</span></a><a href="${base}docs/" data-resource="docs">${icon('book', 16)}<span>Guide & documentation</span></a></nav>
-      <div class="sidebar-footer"><span class="status-dot"></span><span>Read-only dataset</span><a href="${base}docs/" data-resource="docs" aria-label="Help and documentation">${icon('book', 14)}</a></div>
     </aside>
     <main id="main" class="workspace" tabindex="-1">
         <header class="page-header"><h1>CheatDB</h1><span class="dataset-total">${fmt(catalog.totalGames)} games <span>·</span> ${fmt(catalog.totalCheats)} codes</span></header>
